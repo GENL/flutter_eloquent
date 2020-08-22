@@ -91,7 +91,7 @@ class Builder {
   ///
   /// Returns a list of rows that were found
   Future<List<Map<String, dynamic>>> _executeRaw() {
-    return db.rawQuery(toRawSql(), /*whereClauseValues*/);
+    return db.rawQuery(toRawSql(), whereClauseValues);
   }
 
   /// Add a basic where clause to the query.
@@ -279,6 +279,9 @@ class Builder {
       bool whereBooleansContainOr = _wheres.firstWhere(
           (clause) => clause.boolean == 'OR', orElse: () => null) != null;
       _wheres.asMap().forEach((index, condition) {
+        // Fill the where clause value. These values will we used for prepared
+        // statements.
+        whereClauseValues.add(condition.value);
         int lastIndex = _wheres.length - 1;
         /*String boolean = _whereBooleans[index];
         String nextBoolean = index + 1 <= lastIndex ? _whereBooleans[index + 1] : null;*/

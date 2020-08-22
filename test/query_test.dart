@@ -14,6 +14,7 @@ Future<sqliteApi.Database> connectDb() async {
   if (db == null) {
     ffi.sqfliteFfiInit();
     db = await ffi.databaseFactoryFfi.openDatabase(sqliteApi.inMemoryDatabasePath);
+    migrate();
     return db;
   }
   return db;
@@ -39,7 +40,6 @@ void migrate() {
 void main() {
   t.setUp(() async {
     await connectDb();
-    migrate();
   });
 
   test('simple sqflite example', () async {
@@ -59,7 +59,7 @@ void main() {
       .table('posts')
       .select()
       .where('id', '=', 1);
-    // t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1");
+    t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1");
 
     // test empty operator and "AND" boolean.
     q = query
@@ -67,13 +67,12 @@ void main() {
       .select()
       .where('id', 1)
       .where('name', 'Post 1');
-    // t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1 AND name = 'Post 1'");
+    t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1 AND name = 'Post 1'");
 
     final now = DateTime.now().toIso8601String();
     // Test or where
     q = query
       .table('posts')
-      .withoutPreparedStatements()
       .select()
       .where('id', '>', 1)
       .orWhere('name', 'Post 1')
@@ -81,11 +80,16 @@ void main() {
       .where('deleted_at', '!=', null)
       .where('is_active', true)
       .orWhere('is_admin', true);
-    print('Raw ===> ' + q.toRawSql());
     t.expect(q.toRawSql(), "SELECT * FROM posts"
       " WHERE (id > 1 OR name = 'Post 1' OR created_at = '$now')"
       " AND (deleted_at is not NULL)"
       " AND (is_active = 1 OR is_admin = 1)"
+    );
+
+    t.expect(q.withPreparedStatements().toRawSql(), "SELECT * FROM posts"
+      " WHERE (id > ? OR name = ? OR created_at = ?)"
+      " AND (deleted_at is not ?)"
+      " AND (is_active = ? OR is_admin = ?)"
     );
   });
 
