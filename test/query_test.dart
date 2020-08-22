@@ -2,16 +2,53 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart' as t;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:sqflite_common/sqlite_api.dart' as sqliteApi;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
+
 import 'package:flutter_eloquent/flutter_eloquent.dart';
+import 'package:sqlcool/sqlcool.dart' as sqlcool;
 
-void initDb() {
+sqliteApi.Database db;
 
+Future<sqliteApi.Database> connectDb() async {
+  if (db == null) {
+    ffi.sqfliteFfiInit();
+    db = await ffi.databaseFactoryFfi.openDatabase(sqliteApi.inMemoryDatabasePath);
+    return db;
+  }
+  return db;
 }
 
-Builder get query => new Builder();
+Builder get query => new Builder(db).withoutPreparedStatements();
+
+void migrate() {
+  // define the database schema
+  sqlcool.DbTable product = sqlcool.DbTable("products")
+    ..varchar("name", unique: true)
+    ..integer("price")
+    ..text("description", nullable: true)
+    ..foreignKey("category_id", reference: 'categories', onDelete: sqlcool.OnDelete.cascade)
+    ..index("name");
+  List<sqlcool.DbTable> schema = [product];
+
+  // print(product.queryString());
+
+  schema.forEach((schema) => db.execute(schema.queryString()));
+}
 
 void main() {
-  test('Test "where" grammar verb', () {
+  t.setUp(() async {
+    await connectDb();
+    migrate();
+  });
+
+  test('simple sqflite example', () async {
+    var db = await connectDb();
+    expect(await db.getVersion(), 0);
+    await db.close();
+  });
+
+  test('Test "Select" grammar verb', () {
     final q = query.table('posts').select(['name']);
 
     t.expect(q.toRawSql(), "SELECT name FROM posts");
@@ -20,12 +57,14 @@ void main() {
   test("Test 'where' grammar verb", () {
     Builder q = query
       .table('posts')
+      .select()
       .where('id', '=', 1);
     // t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1");
 
     // test empty operator and "AND" boolean.
     q = query
       .table('posts')
+      .select()
       .where('id', 1)
       .where('name', 'Post 1');
     // t.expect(q.toRawSql(), "SELECT * FROM posts WHERE id = 1 AND name = 'Post 1'");
@@ -34,17 +73,27 @@ void main() {
     // Test or where
     q = query
       .table('posts')
+      .withoutPreparedStatements()
+      .select()
       .where('id', '>', 1)
       .orWhere('name', 'Post 1')
       .orWhere('created_at', now)
       .where('deleted_at', '!=', null)
       .where('is_active', true)
       .orWhere('is_admin', true);
-    print('Raw ====> ${q.toRawSql()}');
+    print('Raw ===> ' + q.toRawSql());
     t.expect(q.toRawSql(), "SELECT * FROM posts"
       " WHERE (id > 1 OR name = 'Post 1' OR created_at = '$now')"
       " AND (deleted_at is not NULL)"
       " AND (is_active = 1 OR is_admin = 1)"
     );
   });
+
+  /*test("Test count", () async {
+    var q = query.
+      table('products')
+      .select(['name']);
+
+    t.expect(await q.count(), 0);
+  });*/
 }
