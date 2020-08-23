@@ -94,7 +94,7 @@ void main() {
 
   test("Test count, create, update", () async {
     Builder q() => query.table('products').select();
-    t.expect(await q().count(), 0);
+    t.expect(await q().count('name'), 0);
 
     await query.table('products')
       .withoutPreparedStatements()

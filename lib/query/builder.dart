@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:sqflite_common/sqlite_api.dart' as sqliteApi;
 
+// todo: inner join, pagination, factories, seeders
+
 class Builder {
   List<String> _selects = [];
 
@@ -18,6 +20,9 @@ class Builder {
   List<String> _group = [];
 
   List<String> _orderBys = [];
+
+  /// The flag for counting the query record.
+  bool _count = false;
 
   String _limit;
 
@@ -43,14 +48,18 @@ class Builder {
   /// All of the available clause operators.
   final _operators = [
     '=', '<', '>', '<=', '>=', '<>', '!=', /*'<=>'*/
-    'like', /*'like binary'*/ 'not like', /*'ilike'*/ 'in',
-    'is', 'is not'
+    'like', /*'like binary'*/ 'not like', 'rlike', 'not rlike', /*'ilike'*/
+    'in', 'is', 'is not'
     /*'&', '|', '^', '<<', '>>',
     'rlike', 'not rlike', 'regexp', 'not regexp',
     '~', '~*', '!~', '!~*', 'similar to',
     'not similar to', 'not ilike', '~~*', '!~~*'*/
   ];
 
+  /// Create a new query builder instance.
+  ///
+  // Every columns passed to [insert], [update], [delete], [count], [get],
+  // [first], [find] methods override those from [select] method
   Builder(this.db);
 
   Builder table(String table) {
@@ -58,9 +67,22 @@ class Builder {
     return this;
   }
 
+  /// Add a select statement to the query.
+  ///
+  /// If at a moment the fields are empty which signifies select all ['*'],
+  /// we override all other selects. So the final statement will become
+  /// SELECT * FROM ...
+  /// or SELECT COUNT(*) FROM ...
   Builder select([List<String> fields = const []]) {
     _verb = Verb.select;
-    _selects = fields;
+
+    if (fields.isEmpty) {
+      _selects.clear();
+    } else {
+      _selects.addAll(fields);
+    }
+    // Remove duplicate columns from the list.
+    _selects = new Set<String>.from(_selects).toList();
     return this;
   }
 
@@ -120,7 +142,6 @@ class Builder {
   }
 
   /// Add a basic where clause to the query.
-  /// Do not use this to check nullability, instead use [whereNull] and [whereNotNull].
   Builder where(String column, dynamic operator, [dynamic value, String boolean = 'AND']) {
     assert(value is String || value is num || value == null || value is bool);
 
@@ -214,8 +235,23 @@ class Builder {
     return whereNull(column, 'OR', true);
   }
 
-  Future<int> count([List<String> columns = const []]) {
-    return get(columns).then((value) => value.length);
+  // Add a basic 'where like' clause to the query
+  //
+  /// Finds any values that have "or" in any position
+//  Builder whereLike(String column, String value) {
+//    return where(column, 'like', '%$value%');
+//  }
+
+  /// Count the result of a query.
+  Future<int> count([String column = '*']) async {
+    assert(column != null);
+    _count = true;
+    // Remove the select that already exist to prevent the aql COUNT function to have
+    // multiple parameter.
+    _selects.clear();
+    List<Map<String, dynamic>> result =
+      (await select(column == '*' ? [] : [column])._executeRaw());
+    return result.first.values.first;
   }
 
   /// Set the "limit" value of the query.
@@ -309,10 +345,18 @@ class Builder {
   List<String> _makeSelect() {
     List<String> parts = ['SELECT'];
     if (_selects.isNotEmpty) {
-      parts.add(_selects.join(', '));
+      var select = _selects.join(', ');
+      if (_count)
+        parts.add('COUNT($select)');
+      else
+        parts.add(select);
     } else {
-      parts.add('*');
+      if (_count)
+        parts.add('COUNT(*)');
+      else
+        parts.add('*');
     }
+
     parts.addAll(['FROM', _table]);
 
     parts.addAll(_getWheresParts());
@@ -433,8 +477,13 @@ class Builder {
 
 }
 
-/// Sometimes where conditions contains spaces.
-/// We wrap non-numeral values into single-quotes.
+/// Parse [value] for it to be in the good form for the sql raw
+///
+/// If [value] is boolean, replaces by 0 (false) or 1 (true).
+///
+/// If [value] is null, returns NULL
+///
+/// If [value] is String, returns the same string in the single-quotes.
 String _parseConditionValue(dynamic value) {
   if (value == null) return 'NULL';
   if (value is bool) return value ? '1' : '0';
@@ -445,7 +494,7 @@ enum Verb {
   select, create, update, delete
 }
 
-
+/// Represents a where clause.
 class WhereClause {
   String column;
   String operator;
