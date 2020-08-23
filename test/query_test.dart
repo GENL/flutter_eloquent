@@ -28,7 +28,7 @@ void migrate() {
     ..varchar("name", unique: true)
     ..integer("price")
     ..text("description", nullable: true)
-    // ..foreignKey("category_id", reference: 'categories', onDelete: sqlcool.OnDelete.cascade)
+  // ..foreignKey("category_id", reference: 'categories', onDelete: sqlcool.OnDelete.cascade)
     ..index("name");
   List<sqlcool.DbTable> schema = [product];
 
@@ -45,7 +45,6 @@ void main() {
   test('simple sqflite example', () async {
     var db = await connectDb();
     expect(await db.getVersion(), 0);
-    await db.close();
   });
 
   test('Test "Select" grammar verb', () {
@@ -100,17 +99,17 @@ void main() {
     await query.table('products')
       .withoutPreparedStatements()
       .insert({
-        'name': 'A name',
-        'price': 562,
-        'description': 'Your desc!!!'
+      'name': 'A name',
+      'price': 562,
+      'description': 'Your desc!!!'
     });
 
     await query.table('products')
       .withPreparedStatements()
       .insert({
-        'name': 'A name 2',
-        'price': 562,
-        'description': 'Your desc!!!'
+      'name': 'A name 2',
+      'price': 562,
+      'description': 'Your desc!!!'
     });
 
     final newValues = {

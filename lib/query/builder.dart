@@ -277,11 +277,12 @@ class Builder {
           " None of the verbs was defined (SELECT, UPDATE, DELETE, INSERT)";
     }
 
-    // Clear the statement of
+    // When the developer does not want to prepare the request, the
+    // values are cleared. This affect the whole Builder instance
+    // so when the developer wants prepared statements again, the values
+    // we re-filled if they were not been modified.
     if (!_preparedStatements) {
-      print('CountA ${_savedValues.length}');
       _values.clear();
-      print('CountB ${_savedValues.length}');
       _whereClauseValues.clear();
     } else {
       if (_values.isEmpty) _values = _savedValues;
