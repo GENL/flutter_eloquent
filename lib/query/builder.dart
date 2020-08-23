@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:sqflite_common/sqlite_api.dart' as sqliteApi;
 
 class Builder {
@@ -26,8 +27,13 @@ class Builder {
   List<String> _keys = [];
   /// Values of prepared create, update, delete statements
   List<String> _values = [];
+  /// Allows to save [_values] when [_preparedStatements] is false
+  List<String> _savedValues = [];
+
   /// Values of prepared statements for a select
   List<String> _whereClauseValues = [];
+  /// Allows to save [_savedWhereClauseValues] when [_preparedStatements] is false
+  List<String> _savedWhereClauseValues = [];
 
   sqliteApi.Database db;
 
@@ -58,7 +64,8 @@ class Builder {
     return this;
   }
 
-  Future<Map<String, dynamic>> create(Map<String, dynamic> data) async {
+  /// Insert a new record into the database.
+  Future<Map<String, dynamic>> insert(Map<String, dynamic> data) async {
     _verb = Verb.create;
     _keys = data.keys.toList();
     _values = data.values.map((v) => _parseConditionValue(v)).toList();
@@ -74,8 +81,15 @@ class Builder {
     _verb = Verb.update;
     _keys = data.keys.toList();
     _values = data.values.map((v) => _parseConditionValue(v)).toList();
-
     return await db.rawUpdate(toRawSql(), _values);
+  }
+
+  /// Delete a record in the database.
+  ///
+  /// return the number of deleted records.
+  Future<int> delete() async {
+    _verb = Verb.delete;
+    return await db.rawDelete(toRawSql());
   }
 
   /// Execute the query as a "select" statement.
@@ -200,12 +214,8 @@ class Builder {
     return whereNull(column, 'OR', true);
   }
 
-  Future<int> count([List<String> columns = const ['*']]) {
-    // Clear the previous selected fields.
-    return get(columns).then((value) {
-      print('Count Data ===> $value');
-      return value.length;
-    });
+  Future<int> count([List<String> columns = const []]) {
+    return get(columns).then((value) => value.length);
   }
 
   /// Set the "limit" value of the query.
@@ -231,10 +241,22 @@ class Builder {
     return orderBy(columns, 'desc');
   }
 
-  String toRawSql() {
+  /// Returns the raw sql.
+  ///
+  /// If [forExecution] is true, so we apply the modification
+  /// to prepare the sql string to be executed by sqlite.
+  /// These modification includes for example prepared statements.
+  ///
+  /// if [forExecution] is false, statements are not prepared at all.
+  String toRawSql(/*{bool forExecution = true}*/) {
     assert(_table != null);
 
     _keys = _keys.map((k) => '`$k`').toList();
+    _savedValues = List.from(_values);
+    _savedWhereClauseValues = List.from(_whereClauseValues);
+
+    // bool preparedStatements = _preparedStatements;
+    // if (forExecution) _preparedStatements = false;
 
     List<String> parts = [];
     switch (_verb) {
@@ -248,14 +270,25 @@ class Builder {
         parts = _makeUpdate();
         break;
       case Verb.delete:
-        // TODO: Handle this case.
+        parts = _makeDelete();
         break;
+      default:
+        throw "You try to get the raw of an incomplete statement."
+          " None of the verbs was defined (SELECT, UPDATE, DELETE, INSERT)";
     }
 
+    // Clear the statement of
     if (!_preparedStatements) {
+      print('CountA ${_savedValues.length}');
       _values.clear();
+      print('CountB ${_savedValues.length}');
       _whereClauseValues.clear();
+    } else {
+      if (_values.isEmpty) _values = _savedValues;
+      if (_whereClauseValues.isEmpty) _savedWhereClauseValues = _whereClauseValues;
     }
+
+    // _preparedStatements = preparedStatements;
 
     return parts.join(' ');
   }
@@ -314,7 +347,7 @@ class Builder {
     return parts;
   }
 
-  List _makeUpdate() {
+  List<String> _makeUpdate() {
     List<String> parts = [];
     parts.addAll(["UPDATE", _table, "SET"]);
     Iterable data = _keys
@@ -327,6 +360,23 @@ class Builder {
         ' Be careful when updating records. If you omit the WHERE clause, ALL records will be updated!');
     }
     parts.addAll(_getWheresParts());
+    return parts;
+  }
+
+  List<String> _makeDelete() {
+    List<String> parts = [];
+    parts.addAll(['DELETE', 'FROM', _table]);
+    if (_wheres.isEmpty) {
+      print("[flutter_eloquent] Delete Statement Warning!!"
+        " Be careful when deleting records in a table!"
+        " Notice the WHERE clause in the DELETE statement."
+        " The WHERE clause specifies which record(s) should be deleted."
+        " If you omit the WHERE clause, all records in the table will be deleted!");
+    }
+    parts.addAll(_getWheresParts());
+//    if (this._limit != null) {
+//      parts.addAll(["LIMIT", _limit]);
+//    }
     return parts;
   }
 

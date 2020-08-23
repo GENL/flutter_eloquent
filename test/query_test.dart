@@ -94,12 +94,12 @@ void main() {
   });
 
   test("Test count, create, update", () async {
-    var q = query.table('products').select();
-    t.expect(await q.count(), 0);
+    Builder q() => query.table('products').select();
+    t.expect(await q().count(), 0);
 
     await query.table('products')
       .withoutPreparedStatements()
-      .create({
+      .insert({
         'name': 'A name',
         'price': 562,
         'description': 'Your desc!!!'
@@ -107,7 +107,7 @@ void main() {
 
     await query.table('products')
       .withPreparedStatements()
-      .create({
+      .insert({
         'name': 'A name 2',
         'price': 562,
         'description': 'Your desc!!!'
@@ -122,7 +122,12 @@ void main() {
       .withoutPreparedStatements()
       .where('id', 2)
       .update(newValues);
-    t.expect(await q.count(), 2);
-    t.expect(await q.find(2), {'id': 2, ...newValues});
+    t.expect(await q().count(), 2);
+    t.expect(await q().find(2), {'id': 2, ...newValues});
+
+    query.table('products')
+      .where('id', 2)
+      .delete();
+    t.expect(await q().count(), 1);
   });
 }
