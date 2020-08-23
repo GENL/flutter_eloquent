@@ -1,7 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:sqflite_common/sqlite_api.dart' as sqliteApi;
 
-// todo: inner join, pagination, factories, seeders
+// TODO: left join, pagination (offset), factories, seeders, migrations
 
 class Builder {
   List<String> _selects = [];
@@ -9,13 +8,6 @@ class Builder {
   String _table;
 
   List<WhereClause> _wheres = [];
-
-  /// This represents the boolean of the where clause.
-  /// So [_whereBooleans.elementAt(0)] is the boolean of
-  /// _where.elementAt(0).
-  ///
-  /// A where boolean is "AND" or "OR".
-  // List<String> _whereBooleans = [];
 
   List<String> _group = [];
 
@@ -271,6 +263,11 @@ class Builder {
     return limit(value);
   }
 
+  /// Select all the records in the database.
+  Future<List<Map<String, dynamic>>> all() {
+    return get();
+  }
+
   /// Add an "order by" clause to the query.
   Builder orderBy(List<String> columns, [String direction = 'asc']) {
     assert(direction.toLowerCase() == 'asc' || direction.toLowerCase() == 'desc');
@@ -328,7 +325,7 @@ class Builder {
       _whereClauseValues.clear();
     } else {
       if (_values.isEmpty) _values = _savedValues;
-      if (_whereClauseValues.isEmpty) _savedWhereClauseValues = _whereClauseValues;
+      if (_whereClauseValues.isEmpty) _whereClauseValues = _whereClauseValues;
     }
 
     // _preparedStatements = preparedStatements;

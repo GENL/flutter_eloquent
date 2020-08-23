@@ -3,6 +3,7 @@ import 'dart:core';
 import 'package:flutter_eloquent/json_parser/json_parsable.dart';
 import 'package:flutter_eloquent/container_/container.dart';
 import 'builder0.dart';
+// import 'db.dart';
 
 class Model<E> with JsonParsable, JsonHelpable<Map<String, dynamic>> {
   Builder get query {
@@ -13,6 +14,7 @@ class Model<E> with JsonParsable, JsonHelpable<Map<String, dynamic>> {
     } catch (e) {
       return null;
     }
+    // return Db.table(getTableByClassName())
   }
 
   set query(Builder v) => _db = v;
