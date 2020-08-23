@@ -61,11 +61,21 @@ class Builder {
   Future<Map<String, dynamic>> create(Map<String, dynamic> data) async {
     _verb = Verb.create;
     _keys = data.keys.toList();
-    _values = data.values.map((v) => v.toString()).toList();
+    _values = data.values.map((v) => _parseConditionValue(v)).toList();
 
     int id = await db.rawInsert(toRawSql(), _values);
-    print('Id ===> $id');
     return await select().where('id', id).first();
+  }
+
+  /// Update a record in the database.
+  ///
+  /// return the number of updated records.
+  Future<int> update(Map<String, dynamic> data) async {
+    _verb = Verb.update;
+    _keys = data.keys.toList();
+    _values = data.values.map((v) => _parseConditionValue(v)).toList();
+
+    return await db.rawUpdate(toRawSql(), _values);
   }
 
   /// Execute the query as a "select" statement.
@@ -235,7 +245,7 @@ class Builder {
         parts = _makeCreate();
         break;
       case Verb.update:
-        // TODO: Handle this case.
+        parts = _makeUpdate();
         break;
       case Verb.delete:
         // TODO: Handle this case.
@@ -271,6 +281,58 @@ class Builder {
     }
     parts.addAll(['FROM', _table]);
 
+    parts.addAll(_getWheresParts());
+
+    if (this._orderBys.isNotEmpty) {
+      parts.add("ORDER BY");
+      parts.add(_orderBys.join(', '));
+    }
+    if (this._limit != null) {
+      parts.add("LIMIT");
+      parts.add(this._limit);
+    }
+
+    return parts;
+  }
+
+  List<String> _makeCreate() {
+    List<String> parts = [];
+    parts.add("INSERT INTO");
+    parts.add(_table);
+    parts.add("(${_keys.join(', ')})");
+    parts.add("VALUES");
+    // Use the question mark syntax for prepared statement.
+    if (_preparedStatements) {
+      parts.add('(' +
+        List<String>.generate(_values.length, (index) => '?').join(', ') +
+        ')');
+    } else {
+      parts.add("(" +
+        _values.join(", ") +
+        ")");
+    }
+    return parts;
+  }
+
+  List _makeUpdate() {
+    List<String> parts = [];
+    parts.addAll(["UPDATE", _table, "SET"]);
+    Iterable data = _keys
+      .asMap()
+      .map((index, key) => MapEntry(index, "$key=${_preparedStatements ? '?' : _values[index]}"))
+      .values;
+    parts.add(data.join(", "));
+    if (_wheres.isEmpty) {
+      print('[flutter_eloquent] Update Statement Warning!!'
+        ' Be careful when updating records. If you omit the WHERE clause, ALL records will be updated!');
+    }
+    parts.addAll(_getWheresParts());
+    return parts;
+  }
+
+  /// Returns where parts that should be added to the raw query.
+  List<String> _getWheresParts() {
+    List<String> parts = [];
     if (_wheres.isNotEmpty) {
       String completeCondition = '';
       // bool whereBooleansContainOr = _whereBooleans.contains('OR');
@@ -302,35 +364,6 @@ class Builder {
         }
       });
       parts.addAll(['WHERE', completeCondition]);
-    }
-
-    if (this._orderBys.isNotEmpty) {
-      parts.add("ORDER BY");
-      parts.add(_orderBys.join(', '));
-    }
-    if (this._limit != null) {
-      parts.add("LIMIT");
-      parts.add(this._limit);
-    }
-
-    return parts;
-  }
-
-  List<String> _makeCreate() {
-    List<String> parts = [];
-    parts.add("INSERT INTO");
-    parts.add(_table);
-    parts.add("(${_keys.join(', ')})");
-    parts.add("VALUES");
-    // Use the question mark syntax for prepared statement.
-    if (_preparedStatements) {
-      parts.add('(' +
-        List<String>.generate(_values.length, (index) => '?').join(', ') +
-        ')');
-    } else {
-      parts.add("('" +
-        _values.join("', '") +
-        "')");
     }
     return parts;
   }

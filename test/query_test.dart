@@ -93,7 +93,7 @@ void main() {
     );
   });
 
-  test("Test count and create", () async {
+  test("Test count, create, update", () async {
     var q = query.table('products').select();
     t.expect(await q.count(), 0);
 
@@ -104,6 +104,7 @@ void main() {
         'price': 562,
         'description': 'Your desc!!!'
     });
+
     await query.table('products')
       .withPreparedStatements()
       .create({
@@ -111,6 +112,17 @@ void main() {
         'price': 562,
         'description': 'Your desc!!!'
     });
+
+    final newValues = {
+      'name': 'A name 2*',
+      'price': 0,
+      'description': null
+    };
+    await query.table('products')
+      .withoutPreparedStatements()
+      .where('id', 2)
+      .update(newValues);
     t.expect(await q.count(), 2);
+    t.expect(await q.find(2), {'id': 2, ...newValues});
   });
 }
