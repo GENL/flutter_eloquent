@@ -1,6 +1,6 @@
 import 'package:sqflite_common/sqlite_api.dart' as sqliteApi;
 
-// TODO: left join, pagination (offset), factories, seeders, migrations
+// TODO: left join, pagination (offset), factories, seeders, migrations, rewrite the base model class.
 
 class Builder {
   List<String> _selects = [];
