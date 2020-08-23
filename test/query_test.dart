@@ -12,7 +12,7 @@ sqliteApi.Database db;
 
 Future<sqliteApi.Database> connectDb() async {
   if (db == null) {
-    ffi.sqfliteFfiInit();
+    // ffi.sqfliteFfiInit();
     db = await ffi.databaseFactoryFfi.openDatabase(sqliteApi.inMemoryDatabasePath);
     migrate();
     return db;
@@ -28,7 +28,7 @@ void migrate() {
     ..varchar("name", unique: true)
     ..integer("price")
     ..text("description", nullable: true)
-    ..foreignKey("category_id", reference: 'categories', onDelete: sqlcool.OnDelete.cascade)
+    // ..foreignKey("category_id", reference: 'categories', onDelete: sqlcool.OnDelete.cascade)
     ..index("name");
   List<sqlcool.DbTable> schema = [product];
 
@@ -93,11 +93,24 @@ void main() {
     );
   });
 
-  /*test("Test count", () async {
-    var q = query.
-      table('products')
-      .select(['name']);
-
+  test("Test count and create", () async {
+    var q = query.table('products').select();
     t.expect(await q.count(), 0);
-  });*/
+
+    await query.table('products')
+      .withoutPreparedStatements()
+      .create({
+        'name': 'A name',
+        'price': 562,
+        'description': 'Your desc!!!'
+    });
+    await query.table('products')
+      .withPreparedStatements()
+      .create({
+        'name': 'A name 2',
+        'price': 562,
+        'description': 'Your desc!!!'
+    });
+    t.expect(await q.count(), 2);
+  });
 }

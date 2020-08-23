@@ -27,7 +27,7 @@ class Builder {
   /// Values of prepared create, update, delete statements
   List<String> _values = [];
   /// Values of prepared statements for a select
-  List<String> whereClauseValues = [];
+  List<String> _whereClauseValues = [];
 
   sqliteApi.Database db;
 
@@ -61,9 +61,10 @@ class Builder {
   Future<Map<String, dynamic>> create(Map<String, dynamic> data) async {
     _verb = Verb.create;
     _keys = data.keys.toList();
-    _values = data.values.toList();
+    _values = data.values.map((v) => v.toString()).toList();
 
     int id = await db.rawInsert(toRawSql(), _values);
+    print('Id ===> $id');
     return await select().where('id', id).first();
   }
 
@@ -79,7 +80,7 @@ class Builder {
 
   /// Execute a query for a single record by ID.
   Future<Map<String, dynamic>> find(int id, [List<String> columns = const []]) {
-    return this.where('id', '=', id).first(columns);
+    return where('id', '=', id).first(columns);
   }
 
   /// Execute a query for the last record.
@@ -91,7 +92,7 @@ class Builder {
   ///
   /// Returns a list of rows that were found
   Future<List<Map<String, dynamic>>> _executeRaw() {
-    return db.rawQuery(toRawSql(), whereClauseValues);
+    return db.rawQuery(toRawSql(), _whereClauseValues);
   }
 
   /// Add a basic where clause to the query.
@@ -240,6 +241,12 @@ class Builder {
         // TODO: Handle this case.
         break;
     }
+
+    if (!_preparedStatements) {
+      _values.clear();
+      _whereClauseValues.clear();
+    }
+
     return parts.join(' ');
   }
 
@@ -262,15 +269,6 @@ class Builder {
     } else {
       parts.add('*');
     }
-    if (this._orderBys.isNotEmpty) {
-      parts.add("ORDER BY");
-      parts.add(_orderBys.join(', '));
-    }
-    if (this._limit != null) {
-      parts.add("LIMIT");
-      parts.add(this._limit);
-    }
-
     parts.addAll(['FROM', _table]);
 
     if (_wheres.isNotEmpty) {
@@ -281,7 +279,7 @@ class Builder {
       _wheres.asMap().forEach((index, condition) {
         // Fill the where clause value. These values will we used for prepared
         // statements.
-        whereClauseValues.add(condition.value);
+        _whereClauseValues.add(condition.value);
         int lastIndex = _wheres.length - 1;
         /*String boolean = _whereBooleans[index];
         String nextBoolean = index + 1 <= lastIndex ? _whereBooleans[index + 1] : null;*/
@@ -306,6 +304,15 @@ class Builder {
       parts.addAll(['WHERE', completeCondition]);
     }
 
+    if (this._orderBys.isNotEmpty) {
+      parts.add("ORDER BY");
+      parts.add(_orderBys.join(', '));
+    }
+    if (this._limit != null) {
+      parts.add("LIMIT");
+      parts.add(this._limit);
+    }
+
     return parts;
   }
 
@@ -315,11 +322,16 @@ class Builder {
     parts.add(_table);
     parts.add("(${_keys.join(', ')})");
     parts.add("VALUES");
-    // parts.add("('${_values.join('\', \'')}')"); // _values.join('', '')
     // Use the question mark syntax for prepared statement.
-    parts.add('(' +
-      List<String>.generate(_values.length, (index) => '?').join(', ') +
-      ')');
+    if (_preparedStatements) {
+      parts.add('(' +
+        List<String>.generate(_values.length, (index) => '?').join(', ') +
+        ')');
+    } else {
+      parts.add("('" +
+        _values.join("', '") +
+        "')");
+    }
     return parts;
   }
 
