@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:core';
 import 'package:flutter_eloquent/json_parser/json_parsable.dart';
-import 'package:flutter_eloquent/container/container.dart';
+import 'package:flutter_eloquent/container_/container.dart';
 import 'builder0.dart';
 
 class Model<E> with JsonParsable, JsonHelpable<Map<String, dynamic>> {

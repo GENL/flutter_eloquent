@@ -123,6 +123,7 @@ void main() {
       .update(newValues);
     t.expect(await q().count(), 2);
     t.expect(await q().find(2), {'id': 2, ...newValues});
+    t.expect(await q().find(20), null);
 
     query.table('products')
       .where('id', 2)

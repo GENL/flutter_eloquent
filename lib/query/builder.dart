@@ -120,8 +120,9 @@ class Builder {
   }
 
   /// Execute a query for the first record.
-  Future<Map<String, dynamic>> first([List<String> columns = const []]) async {
-    return (await select(columns).take(1)._executeRaw()).first;
+  Future<Map<String, dynamic>> first([List<String> columns = const []]) {
+    return select(columns).take(1)._executeRaw()
+      .then((value) => value.isEmpty ? null : value.first);
   }
 
   /// Execute a query for a single record by ID.
@@ -252,6 +253,11 @@ class Builder {
     List<Map<String, dynamic>> result =
       (await select(column == '*' ? [] : [column])._executeRaw());
     return result.first.values.first;
+  }
+
+  /// Tell if a record of the query was found.
+  Future<bool> exists(List<String> columns) {
+    return first(columns).then((value) => value != null);
   }
 
   /// Set the "limit" value of the query.
