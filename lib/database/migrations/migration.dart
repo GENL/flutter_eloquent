@@ -4,7 +4,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 abstract class Migration {
 
   // The name of the database connection to use.
-  Database connection = Config().db;
+  Database connection = DatabaseConfig().db;
 
   /// Run the migrations.
   void up();

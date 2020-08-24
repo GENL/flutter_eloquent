@@ -1,8 +1,8 @@
 name: flutter_eloquent
 description: A new Flutter project.
 version: 0.0.1
-author:
-homepage:
+author: GENL
+homepage: https://github.com/GENL/flutter_eloquent
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -14,6 +14,7 @@ dependencies:
   sqlcool: ^4.3.1
   # sqlparser: ^0.10.1
   sqflite_common_ffi: ^1.1.0+1
+  # args: ^1.6.0
 
 dev_dependencies:
   flutter_test:

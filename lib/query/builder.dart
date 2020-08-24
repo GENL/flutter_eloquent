@@ -85,7 +85,7 @@ class Builder {
     _values = data.values.map((v) => _parseConditionValue(v)).toList();
 
     int id = await db.rawInsert(toRawSql(), _values);
-    return await select().where('id', id).first();
+    return await find(id);
   }
 
   /// Update a record in the database.
@@ -193,8 +193,17 @@ class Builder {
     return this;
   }
 
+  /// Add a "or where" clause to the query.
   Builder orWhere(String column, dynamic operator, [dynamic value]) {
     return where(column, operator, value, 'OR');
+  }
+
+  /// Add a "and where" clause to the query.
+  ///
+  /// This is just a convenience for readability, but this basically
+  /// does exactly the same as [where].
+  Builder andWhere(String column, dynamic operator, [dynamic value]) {
+    return where(column, operator, value, 'AND');
   }
 
   /// Add a "where null" clause to the query.
@@ -345,6 +354,7 @@ class Builder {
     withPreparedStatements();
   }
 
+  /// Build a 'select' query
   List<String> _makeSelect() {
     List<String> parts = ['SELECT'];
     if (_selects.isNotEmpty) {
@@ -376,6 +386,7 @@ class Builder {
     return parts;
   }
 
+  /// Build a 'create' query
   List<String> _makeCreate() {
     List<String> parts = [];
     parts.add("INSERT INTO");
@@ -395,6 +406,7 @@ class Builder {
     return parts;
   }
 
+  /// Build a 'update' query
   List<String> _makeUpdate() {
     List<String> parts = [];
     parts.addAll(["UPDATE", _table, "SET"]);
@@ -411,6 +423,7 @@ class Builder {
     return parts;
   }
 
+  /// Build a 'delete' query
   List<String> _makeDelete() {
     List<String> parts = [];
     parts.addAll(['DELETE', 'FROM', _table]);

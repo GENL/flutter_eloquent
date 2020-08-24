@@ -32,7 +32,7 @@ class EloquentFactory {
   FactoryBuilder of(Type $class) {
     return new FactoryBuilder(
       $class: $class,
-      connection: Config().db,
+      connection: DatabaseConfig().db,
     );
   }
 }
